@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pem
+*.pdf
+D3_Cloud_Deployment_Notes.md
+error.txt
+main.py
+.vscode/
+L1_Variables_DataTypes.html
+text.py
