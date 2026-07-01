@@ -2,7 +2,7 @@ import os
 import streamlit as st
 import chromadb
 from sentence_transformers import SentenceTransformer
-from text import Groq
+from groq import Groq
 from bs4 import BeautifulSoup
 import pdfplumber
 from dotenv import load_dotenv
