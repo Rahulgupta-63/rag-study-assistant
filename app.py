@@ -6,6 +6,8 @@ from groq import Groq
 from bs4 import BeautifulSoup
 import pdfplumber
 from dotenv import load_dotenv
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 load_dotenv()
 
@@ -125,7 +127,12 @@ def get_groq_client():
         st.error("GROQ_API_KEY not found. Set it in your environment or Hugging Face Secrets.")
         st.stop()
     return Groq(api_key=api_key)
-
+def split_text(text):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100
+    )
+    return [c for c in splitter.split_text(text) if len(c.strip()) > 30]
 # ============================================
 # FILE PARSERS
 # ============================================
@@ -140,22 +147,20 @@ def load_html(content):
         text = tag.get_text(separator=" ").strip()
         if len(text) > 50:
             chunks.append(text)
-    return chunks
+    return "\n".join(chunks)
 
 def load_pdf(file):
-    chunks = []
+    text = ""
     with pdfplumber.open(file) as pdf:
         for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                for line in text.split("\n"):
-                    if len(line.strip()) > 50:
-                        chunks.append(line.strip())
-    return chunks
+            page_text = page.extract_text()
+            if page_text:
+                text+=page_text+"\n"
+    return text
 
 def load_txt(content):
-    lines = content.decode("utf-8").split("\n")
-    return [l.strip() for l in lines if len(l.strip()) > 50]
+     return content.decode("utf-8")
+   
 
 # ============================================
 # CHROMADB SETUP
@@ -205,7 +210,7 @@ Notes:
     ] + st.session_state.chat_history
 
     response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=messages
     )
 
@@ -231,11 +236,13 @@ with st.sidebar:
     if uploaded_file and not st.session_state.notes_loaded:
         with st.spinner("Processing notes..."):
             if uploaded_file.name.endswith(".html"):
-                chunks = load_html(uploaded_file.read())
+                text = load_html(uploaded_file.read())
             elif uploaded_file.name.endswith(".pdf"):
-                chunks = load_pdf(uploaded_file)
+                text  = load_pdf(uploaded_file)
             else:
-                chunks = load_txt(uploaded_file.read())
+                text= load_txt(uploaded_file.read())
+
+            chunks=split_text(text)
 
             if chunks:
                 st.session_state.collection = setup_collection(chunks)
